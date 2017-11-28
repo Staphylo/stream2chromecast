@@ -7,7 +7,6 @@ Parts of this are adapted from code found in PyChromecast - https://github.com/b
 
 """
 
-
 # Copyright (C) 2014-2016 Pat Carter
 #
 # This file is part of Stream2chromecast.
@@ -25,8 +24,6 @@ Parts of this are adapted from code found in PyChromecast - https://github.com/b
 # You should have received a copy of the GNU General Public License
 # along with Stream2chromecast.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
 import os
 import socket, select
 import datetime
@@ -36,7 +33,6 @@ import httplib, urllib
 from xml.etree import ElementTree
 
 CACHE_FILE = "~/.cc_device_cache"
-
 
 def search_network(device_limit=None, time_limit=5):
     """ SSDP discovery """
@@ -56,7 +52,6 @@ def search_network(device_limit=None, time_limit=5):
                        '',''])
 
     sock.sendto(req, ("239.255.255.250", 1900))
-
 
     while True:
         time_remaining = time_limit - (datetime.datetime.now() - start_time).seconds
@@ -91,8 +86,6 @@ def search_network(device_limit=None, time_limit=5):
 
     return addrs
 
-
-
 def get_device_name(ip_addr):
     """ get the device friendly name for an IP address """
 
@@ -119,8 +112,6 @@ def get_device_name(ip_addr):
         # e.g. a non chromecast device on the network that responded to the search
         return ""
 
-
-
 def check_cache(name):
     """ check the search results cache file """
 
@@ -146,8 +137,6 @@ def check_cache(name):
 
     return result
 
-
-
 def save_cache(host_map):
     """ save the search results for quick access later """
 
@@ -157,8 +146,6 @@ def save_cache(host_map):
             if len(key) > 0 and len(host_map[key]) > 0:
                 # file format: hostname[tab]ip_addr
                 f.write(key + "\t" + host_map[key] + "\n")
-
-
 
 def find_device(name=None, time_limit=6):
     """ find the first device (quick) or search by name (slower)"""

@@ -8,7 +8,6 @@ version: 0.6.3
 
 """
 
-
 # Copyright (C) 2014-2016 Pat Carter
 #
 # This file is part of Stream2chromecast.
@@ -50,7 +49,6 @@ import urlparse
 import socket
 
 import tempfile
-
 
 
 script_name = (sys.argv[0].split(os.sep))[-1]
@@ -150,13 +148,10 @@ Additional option to specify the buffer size of the data returned from the trans
 """ % ((script_name,) * 21)
 
 
-
-
 PIDFILE = os.path.join(tempfile.gettempdir(), "stream2chromecast_%s.pid")
 
 FFMPEG = 'ffmpeg %s -i "%s" -preset ultrafast -f mp4 -frag_duration 3000 -b:v 2000k -loglevel error %s -'
 AVCONV = 'avconv %s -i "%s" -preset ultrafast -f mp4 -frag_duration 3000 -b:v 2000k -loglevel error %s -'
-
 
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -185,14 +180,12 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             raise
 
-
     def handle_one_request(self):
         try:
             return BaseHTTPServer.BaseHTTPRequestHandler.handle_one_request(self)
         except socket.error:
             if not self.suppress_socket_error_report:
                 raise
-
 
     def finish(self):
         try:
@@ -201,7 +194,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             if not self.suppress_socket_error_report:
                 raise
 
-
     def send_headers(self, filepath):
         self.protocol_version = "HTTP/1.1"
         self.send_response(200)
@@ -209,7 +201,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header("Transfer-Encoding", "chunked")
         self.end_headers()
-
 
     def write_response(self, filepath):
         with open(filepath, "rb") as f:
@@ -226,8 +217,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         self.wfile.write("0")
         self.wfile.write("\r\n\r\n")
-
-
 
 class TranscodingRequestHandler(RequestHandler):
     """ Handle HTTP requests for files which require realtime transcoding with ffmpeg """
@@ -254,14 +243,9 @@ class TranscodingRequestHandler(RequestHandler):
         self.wfile.write("0")
         self.wfile.write("\r\n\r\n")
 
-
-
 class SubRequestHandler(RequestHandler):
     """ Handle HTTP requests for subtitles files """
     content_type = "text/vtt;charset=utf-8"
-
-
-
 
 def get_transcoder_cmds(preferred_transcoder=None):
     """ establish which transcoder utility to use depending on what is installed """
@@ -293,9 +277,6 @@ def get_transcoder_cmds(preferred_transcoder=None):
 
     return transcoder_cmd, probe_cmd
 
-
-
-
 def is_transcoder_installed(transcoder_application):
     """ check for an installation of either ffmpeg or avconv """
     try:
@@ -303,9 +284,6 @@ def is_transcoder_installed(transcoder_application):
         return True
     except OSError:
         return False
-
-
-
 
 def kill_old_pid(device_ip):
     """ attempts to kill a previously running instance of this application casting to the specified device. """
@@ -317,29 +295,22 @@ def kill_old_pid(device_ip):
     except:
         pass
 
-
-
 def save_pid(device_ip):
     """ saves the process id of this application casting to the specified device in a pid file. """
     pid_file = PIDFILE % device_ip
     with open(pid_file, "w") as pidfile:
         pidfile.write("%d" %  os.getpid())
 
-
-
-
 def get_mimetype(filename, ffprobe_cmd=None):
     """ find the container format of the file """
     # default value
     mimetype = "video/mp4"
-
 
     # guess based on filename extension
     guess = mimetypes.guess_type(filename)[0]
     if guess is not None:
         if guess.lower().startswith("video/") or guess.lower().startswith("audio/"):
             mimetype = guess
-
 
     # use the OS file command...
     try:
@@ -353,7 +324,6 @@ def get_mimetype(filename, ffprobe_cmd=None):
             return mimetype
     except:
         pass
-
 
     # use ffmpeg/avconv if installed
     if ffprobe_cmd is None:
@@ -376,11 +346,9 @@ def get_mimetype(filename, ffprobe_cmd=None):
             name, value = line.split("=")
             format_name = value.strip().lower().split(",")
 
-
     # use the default if it isn't possible to identify the format type
     if format_name is None:
         return mimetype
-
 
     if has_video:
         mimetype = "video/"
@@ -401,8 +369,6 @@ def get_mimetype(filename, ffprobe_cmd=None):
         mimetype += "mp4"
 
     return mimetype
-
-
 
 def play(filename, transcode=False, transcoder=None, transcode_options=None, transcode_input_options=None,
          transcode_bufsize=0, device_name=None, server_port=None,
@@ -427,16 +393,11 @@ def play(filename, transcode=False, transcoder=None, transcode_options=None, tra
         else:
             sys.exit("media file %s not found" % filename)
 
-
-
     transcoder_cmd, probe_cmd = get_transcoder_cmds(preferred_transcoder=transcoder)
-
-
     status = cast.get_status()
     webserver_ip = status['client'][0]
 
     print "local ip address:", webserver_ip
-
 
     req_handler = RequestHandler
 
@@ -459,11 +420,8 @@ def play(filename, transcode=False, transcoder=None, transcode_options=None, tra
         else:
             print "No transcoder is installed. Attempting standard playback"
 
-
-
     if req_handler == RequestHandler:
         req_handler.content_type = get_mimetype(filename, probe_cmd)
-
 
     # create a webserver to handle a single request for the media file on either a free port or on a specific port if passed in the port parameter
     port = 0
@@ -476,11 +434,9 @@ def play(filename, transcode=False, transcoder=None, transcode_options=None, tra
     thread = Thread(target=server.handle_request)
     thread.start()
 
-
     url = "http://%s:%s?%s" % (webserver_ip, str(server.server_port), urllib.quote_plus(filename, "/"))
 
     print "URL & content-type: ", url, req_handler.content_type
-
 
     # create another webserver to handle a request for the subtitles file, if specified in the subtitles parameter
     sub = None
@@ -501,11 +457,7 @@ def play(filename, transcode=False, transcoder=None, transcode_options=None, tra
         else:
             print "Subtitles file %s not found" % subtitles
 
-
     load(cast, url, req_handler.content_type, sub, subtitles_language)
-
-
-
 
 def load(cast, url, mimetype, sub=None, sub_language=None):
     """ load a chromecast instance with a url and wait for idle state """
@@ -530,8 +482,6 @@ def load(cast, url, mimetype, sub=None, sub_language=None):
     finally:
         print "done"
 
-
-
 def playurl(url, device_name=None):
     """ play a remote HTTP resource on the chromecast """
 
@@ -555,7 +505,6 @@ def playurl(url, device_name=None):
         resp = conn.getresponse()
         return resp
 
-
     def get_full_url(url, location):
         url_parsed = urlparse.urlparse(url)
 
@@ -573,7 +522,6 @@ def playurl(url, device_name=None):
         full_url = scheme + "://" + host + location
 
         return full_url
-
 
     resp = get_resp(url)
 
@@ -619,23 +567,17 @@ def playurl(url, device_name=None):
     cast = CCMediaController(device_name=device_name)
     load(cast, url, mimetype)
 
-
-
-
 def pause(device_name=None):
     """ pause playback """
     CCMediaController(device_name=device_name).pause()
-
 
 def unpause(device_name=None):
     """ continue playback """
     CCMediaController(device_name=device_name).play()
 
-
 def stop(device_name=None):
     """ stop playback and quit the media player app on the chromecast """
     CCMediaController(device_name=device_name).stop()
-
 
 def get_status(device_name=None):
     """ print the status of the chromecast device """
@@ -645,16 +587,13 @@ def volume_up(device_name=None):
     """ raise the volume by 0.1 """
     CCMediaController(device_name=device_name).set_volume_up()
 
-
 def volume_down(device_name=None):
     """ lower the volume by 0.1 """
     CCMediaController(device_name=device_name).set_volume_down()
 
-
 def set_volume(v, device_name=None):
     """ set the volume to level between 0 and 1 """
     CCMediaController(device_name=device_name).set_volume(v)
-
 
 def list_devices():
     print "Searching for devices, please wait..."
@@ -664,7 +603,6 @@ def list_devices():
 
     for device_ip in device_ips:
         print device_ip, ":", cc_device_finder.get_device_name(device_ip)
-
 
 def print_ident():
     """ display initial messages """
@@ -680,7 +618,6 @@ def print_ident():
     print "-----------------------------------------"
     print
 
-
 def validate_args(args):
     """ validate that there are the correct number of arguments """
     if len(args) < 1:
@@ -688,8 +625,6 @@ def validate_args(args):
 
     if args[0] == "-setvol" and len(args) < 2:
         sys.exit(USAGETEXT)
-
-
 
 def get_named_arg_value(arg_name, args, integer=False):
     """ get a argument value by name """
@@ -714,12 +649,9 @@ def get_named_arg_value(arg_name, args, integer=False):
 
     return arg_val
 
-
-
 def run():
     """ main execution """
     args = sys.argv[1:]
-
 
     # optional device name parm. if not specified, device_name = None (the first device found will be used).
     device_name = get_named_arg_value("-devicename", args)
@@ -747,7 +679,6 @@ def run():
 
     # optional subtitle_language parm. if not specified en-US will be used.
     subtitles_language = get_named_arg_value("-subtitles_language", args)
-
 
 
     validate_args(args)
@@ -792,7 +723,6 @@ def run():
     else:
         play(args[0], device_name=device_name, server_port=server_port, subtitles=subtitles,
              subtitles_port=subtitles_port, subtitles_language=subtitles_language)
-
 
 if __name__ == "__main__":
     run()

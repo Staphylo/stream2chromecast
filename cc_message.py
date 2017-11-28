@@ -27,8 +27,6 @@ Thanks to TheCrazyT for this very helpful gist : https://gist.github.com/TheCraz
 # You should have received a copy of the GNU General Public License
 # along with Stream2chromecast.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
 from struct import pack, unpack
 
 
@@ -38,8 +36,6 @@ def format_field_id(field_no, field_type):
     """ returns a field number & type for packing into the message """
 
     return (field_no << 3) | field_type
-
-
 
 def format_varint_value(int_value):
     """ returns a varint type integer from a python integer """
@@ -54,8 +50,6 @@ def format_varint_value(int_value):
 
     return varint_result
 
-
-
 def format_int_field(field_number, field_data):
     """ formats a protocol buffers Int field """
 
@@ -63,8 +57,6 @@ def format_int_field(field_number, field_data):
     field += pack("B", field_data)
 
     return field
-
-
 
 def format_string_field(field_number, field_data):
     """ formats a protocol buffers length-delimited field """
@@ -77,14 +69,10 @@ def format_string_field(field_number, field_data):
 
     return field
 
-
-
 def prepend_length_header(msg):
     """ prepends the message with a length value """
 
     return pack(">I%ds" % len(msg), len(msg), msg)
-
-
 
 def format_message(source_id, destination_id, namespace, data):
     """ formats a message to be sent to the Chromecast """
@@ -100,9 +88,6 @@ def format_message(source_id, destination_id, namespace, data):
     msg = prepend_length_header(msg)
 
     return msg
-
-
-
 
 # Received messages
 
@@ -121,15 +106,11 @@ def extract_length_header(msg):
 
     return length, remainder
 
-
-
 def extract_field_id(data):
     """ extracts a field id from a received message """
 
     byte = unpack("B", data)[0]
     return byte >> 3, (byte & 7)
-
-
 
 def extract_int_field(data):
     """ extracts a protocol buffers Int field from a received message """
@@ -142,7 +123,6 @@ def extract_int_field(data):
         remainder = data[2:]
 
     return field_id, int_value, remainder
-
 
 def extract_varint(data):
     # extract varint
@@ -161,7 +141,6 @@ def extract_varint(data):
     remainder = data[ptr:]
     return value, remainder
 
-
 def extract_string_field(data):
     """ extracts a protocol buffers length-delimited field from a received message """
 
@@ -173,8 +152,6 @@ def extract_string_field(data):
     string = data[:length]
     remainder = data[length:]
     return field_id, string, remainder
-
-
 
 def extract_message(data):
     """ extracts the message data from a Chromecast response message """
@@ -189,5 +166,4 @@ def extract_message(data):
     field_id, resp['data'], data = extract_string_field(data)
 
     return resp
-
 

@@ -5,7 +5,6 @@ version 0.2.1
 
 """
 
-
 # Copyright (C) 2014-2016 Pat Carter
 #
 # This file is part of Stream2chromecast.
@@ -23,8 +22,6 @@ version 0.2.1
 # You should have received a copy of the GNU General Public License
 # along with Stream2chromecast.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
 import socket, ssl, select
 import json
 import sys
@@ -34,9 +31,7 @@ import re
 import cc_device_finder
 import cc_message
 
-
 MEDIAPLAYER_APPID = "CC1AD845"
-
 
 class CCMediaController():
     def __init__(self, device_name=None):
@@ -53,8 +48,6 @@ class CCMediaController():
         self.media_status = None
         self.volume_status = None
         self.current_applications = None
-
-
 
     def get_device(self, device_name):
         """ get the device ip address """
@@ -78,8 +71,6 @@ class CCMediaController():
 
         return host
 
-
-
     def open_socket(self):
         """ open a socket if there is not currently one open """
 
@@ -89,7 +80,6 @@ class CCMediaController():
 
             self.sock.connect((self.host,8009))
 
-
     def close_socket(self):
         """ close the socket if there is one open """
 
@@ -97,8 +87,6 @@ class CCMediaController():
             self.sock.close()
 
         self.sock = None
-
-
 
     def send_data(self, namespace, data_dict):
         """ send data to the device in binary format"""
@@ -111,8 +99,6 @@ class CCMediaController():
 
         self.sock.write(msg)
 
-
-
     def read_message(self):
         """ read a complete message from the device """
 
@@ -123,7 +109,6 @@ class CCMediaController():
         msg_length, data = cc_message.extract_length_header(data)
         while len(data) < msg_length:
             data += self.sock.recv(2048)
-
 
         message_dict = cc_message.extract_message(data)
 
@@ -138,8 +123,6 @@ class CCMediaController():
         #print json.dumps(message, indent=4, separators=(',', ': '))
 
         return message
-
-
 
     def get_response(self, request_id):
         """ get the response matching the original request id """
@@ -174,8 +157,6 @@ class CCMediaController():
 
         return resp
 
-
-
     def send_msg_with_response(self, namespace, data):
         """ send a request to the device and wait for a response matching the request id """
 
@@ -185,8 +166,6 @@ class CCMediaController():
         self.send_data(namespace, data)
 
         return self.get_response(self.request_id)
-
-
 
     def update_receiver_status_data(self, msg):
         """ update the status for the Media Player app if it is running """
@@ -201,11 +180,8 @@ class CCMediaController():
                     if application.get("appId") == MEDIAPLAYER_APPID:
                         self.receiver_app_status = application
 
-
             if status.has_key('volume'):
                 self.volume_status = status['volume']
-
-
 
     def update_media_status_data(self, msg):
         """ update the media status if there is any media loaded """
@@ -215,9 +191,6 @@ class CCMediaController():
         status = msg.get("status", [])
         if len(status) > 0:
             self.media_status = status[0] # status is an array - selecting the first result..?
-
-
-
 
     def connect(self, destination_id):
         """ connect to to the receiver or the media transport """
@@ -231,8 +204,6 @@ class CCMediaController():
         namespace = "urn:x-cast:com.google.cast.tp.connection"
         self.send_data(namespace, data)
 
-
-
     def get_receiver_status(self):
         """ send a status request to the receiver """
 
@@ -240,16 +211,12 @@ class CCMediaController():
         namespace = "urn:x-cast:com.google.cast.receiver"
         self.send_msg_with_response(namespace, data)
 
-
-
     def get_media_status(self):
         """ send a status request to the media player """
 
         data = {"type":"GET_STATUS"}
         namespace = "urn:x-cast:com.google.cast.media"
         self.send_msg_with_response(namespace, data)
-
-
 
     def load(self, content_url, content_type, sub, sub_language):
         """ Launch the player app, load & play a URL """
@@ -268,7 +235,6 @@ class CCMediaController():
             if self.receiver_app_status is None:
                 self.close_socket()
                 sys.exit("Cannot launch the Media Player app")
-
 
         session_id = str(self.receiver_app_status['sessionId'])
         transport_id = str(self.receiver_app_status['transportId'])
@@ -291,7 +257,6 @@ class CCMediaController():
                     }
                 }
 
-
         if sub:
             if sub_language is None:
                 sub_language = "en-US"
@@ -311,10 +276,8 @@ class CCMediaController():
                                 })
             data["activeTrackIds"] = [1]
 
-
         namespace = "urn:x-cast:com.google.cast.media"
         resp = self.send_msg_with_response(namespace, data)
-
 
         # wait for the player to return "BUFFERING", "PLAYING" or "IDLE"
         if resp.get("type", "") == "MEDIA_STATUS":
@@ -327,10 +290,7 @@ class CCMediaController():
                 if self.media_status != None:
                     player_state = self.media_status.get("playerState", "")
 
-
         self.close_socket()
-
-
 
     def control(self, command, parameters={}):
         """ send a control command to the player """
@@ -362,8 +322,6 @@ class CCMediaController():
 
         self.close_socket()
 
-
-
     def get_status(self):
         """ get the receiver and media status """
 
@@ -394,8 +352,6 @@ class CCMediaController():
 
         return status
 
-
-
     def is_idle(self):
         """ return the IDLE state of the player """
 
@@ -410,23 +366,17 @@ class CCMediaController():
         else:
             return status['media_status'].get("playerState", "") == u"IDLE"
 
-
-
     def pause(self):
         """ pause """
         self.control("PAUSE")
-
 
     def play(self):
         """ unpause """
         self.control("PLAY")
 
-
     def stop(self):
         """ stop """
         self.control("STOP")
-
-
 
     def set_volume(self, level):
         """ set the receiver volume - a float value in level for absolute level or "+" / "-" indicates up or down"""
@@ -450,8 +400,6 @@ class CCMediaController():
 
         self.close_socket()
 
-
-
     def get_volume(self):
         """ get the current volume level """
         self.get_status()
@@ -463,13 +411,9 @@ class CCMediaController():
 
         return vol
 
-
-
     def set_volume_up(self):
         """ increase volume by one step """
         self.set_volume("+")
-
-
 
     def set_volume_down(self):
         """ decrease volume by one step """
