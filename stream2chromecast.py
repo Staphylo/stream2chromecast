@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+from __future__ import with_statement
+
 """
 stream2chromecast.py: Chromecast media streamer for Linux
 
@@ -25,9 +28,7 @@ version: 0.6.3
 # You should have received a copy of the GNU General Public License
 # along with Stream2chromecast.  If not, see <http://www.gnu.org/licenses/>.
 
-
 VERSION = "0.6.3"
-
 
 import sys, os, errno
 import signal
@@ -49,7 +50,6 @@ import urlparse
 import socket
 
 import tempfile
-
 
 script_name = (sys.argv[0].split(os.sep))[-1]
 
@@ -147,12 +147,10 @@ Additional option to specify the buffer size of the data returned from the trans
 
 """ % ((script_name,) * 21)
 
-
 PIDFILE = os.path.join(tempfile.gettempdir(), "stream2chromecast_%s.pid")
 
 FFMPEG = 'ffmpeg %s -i "%s" -preset ultrafast -f mp4 -frag_duration 3000 -b:v 2000k -loglevel error %s -'
 AVCONV = 'avconv %s -i "%s" -preset ultrafast -f mp4 -frag_duration 3000 -b:v 2000k -loglevel error %s -'
-
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     content_type = "video/mp4"
@@ -377,12 +375,10 @@ def play(filename, transcode=False, transcoder=None, transcode_options=None, tra
 
     print_ident()
 
-
     cast = CCMediaController(device_name=device_name)
 
     kill_old_pid(cast.host)
     save_pid(cast.host)
-
 
     if os.path.isfile(filename):
         filename = os.path.abspath(filename)
@@ -459,6 +455,88 @@ def play(filename, transcode=False, transcoder=None, transcode_options=None, tra
 
     load(cast, url, req_handler.content_type, sub, subtitles_language)
 
+import pprint
+import fcntl
+import select
+import termios
+import contextlib
+
+def process_special_key(cast, fd):
+    key = fd.read(1)
+    if key == '[':
+        key = fd.read(1)
+        if key == 'D': # left
+            status = cast.current_media_status()
+            duration = status['media']['duration']
+            current = status['currentTime']
+            cast.seek(max(0, current - 5))
+        elif key == 'B': # right
+            status = cast.current_media_status()
+            duration = status['media']['duration']
+            current = status['currentTime']
+            pc = current - duration * 5 / 100
+            cast.seek(max(0, pc))
+        elif key == 'C': # right
+            status = cast.current_media_status()
+            duration = status['media']['duration']
+            current = status['currentTime']
+            cast.seek(min(duration, current + 5))
+        elif key == 'A': # up
+            status = cast.current_media_status()
+            duration = status['media']['duration']
+            current = status['currentTime']
+            pc = current + duration * 5 / 100
+            cast.seek(min(duration, pc))
+
+def process_key(cast, fd):
+    key = fd.read(1)
+
+    if key == ' ':
+        cast.toggle_play()
+    elif key == 'i':
+        pprint.pprint(cast.get_status())
+    elif key == 'q':
+        cast.stop()
+        return True
+    elif key == "\x1b":
+        process_special_key(cast, fd)
+    elif key == '0':
+        cast.set_volume_up()
+    elif key == '9':
+        cast.set_volume_down()
+    elif key == 'm':
+        cast.toggle_mute()
+    else:
+        print "key: %r" % key
+    return False
+
+def handle_commands(cast):
+    try:
+        return process_key(cast, sys.stdin)
+    except IOError:
+        pass
+    except Exception as e:
+        print "This happened %s" % e
+    return False
+
+@contextlib.contextmanager
+def interactive_stdin():
+    fd = sys.stdin.fileno()
+
+    oldterm = termios.tcgetattr(fd)
+    newattr = termios.tcgetattr(fd)
+    newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+    termios.tcsetattr(fd, termios.TCSANOW, newattr)
+
+    oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
+
+    try:
+        yield
+    finally:
+        termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
+        fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
+
 def load(cast, url, mimetype, sub=None, sub_language=None):
     """ load a chromecast instance with a url and wait for idle state """
     try:
@@ -469,10 +547,11 @@ def load(cast, url, mimetype, sub=None, sub_language=None):
         # wait for playback to complete before exiting
         print "waiting for player to finish - press ctrl-c to stop..."
 
-        idle = False
-        while not idle:
-            time.sleep(1)
-            idle = cast.is_idle()
+        with interactive_stdin():
+            terminate = False
+            while not terminate:
+                time.sleep(0.1)
+                terminate = handle_commands(cast)
 
     except KeyboardInterrupt:
         print

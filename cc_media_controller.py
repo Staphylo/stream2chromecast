@@ -292,7 +292,7 @@ class CCMediaController():
 
         self.close_socket()
 
-    def control(self, command, parameters={}):
+    def control(self, command, **kwargs):
         """ send a control command to the player """
 
         self.connect("receiver-0")
@@ -315,7 +315,7 @@ class CCMediaController():
             media_session_id = self.media_status['mediaSessionId']
 
         data = {"type":command, "mediaSessionId":media_session_id}
-        data.update(parameters)  # for additional parameters
+        data.update(kwargs)  # for additional parameters
 
         namespace = "urn:x-cast:com.google.cast.media"
         self.send_msg_with_response(namespace, data)
@@ -377,6 +377,49 @@ class CCMediaController():
     def stop(self):
         """ stop """
         self.control("STOP")
+
+    def mute(self):
+        self.control("SET_VOLUME", volume={"muted": True})
+
+    def unmute(self):
+        self.control("SET_VOLUME", volume={"muted": False})
+
+    def seek(self, currentTime):
+        self.control("SEEK", currentTime=currentTime)
+
+    def toggle_play(self):
+        status = self.get_status()
+        media_status = status.get('media_status', None)
+        if not media_status:
+            return
+        player_status = media_status.get('playerState', None)
+        if not player_status:
+            return
+
+        if player_status in ['PLAYING', 'BUFFERING']:
+            self.pause()
+        elif player_status in ['PAUSED']:
+            self.play()
+        else:
+            print "toggle_play: nothing to do for %r" % player_status
+
+    def toggle_mute(self):
+        status = self.get_status()
+        media_status = status.get('media_status', None)
+        if not media_status:
+            return
+        volume = media_status.get('volume', None)
+        if not volume:
+            return
+
+        if volume[ 'muted' ]:
+            self.unmute()
+        else:
+            self.mute()
+
+    def current_media_status(self):
+        status = self.get_status()
+        return status['media_status']
 
     def set_volume(self, level):
         """ set the receiver volume - a float value in level for absolute level or "+" / "-" indicates up or down"""
